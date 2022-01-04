@@ -51,6 +51,20 @@ typedef struct udp_hdr
 }udp_hdr;
 udp_hdr *udp;
 
+typedef struct arp_hdr
+{
+    u_short hard_type;
+    u_short prot_type;
+    u_short hard_len:2;
+    u_short prot_len:2;
+    u_short opcode;
+    u_char s_mac[6];
+    u_char sourceIP[4];
+    u_char d_mac[6];
+    u_char destIP[4];
+}arp_hdr;
+arp_hdr *arp;
+
 
 int main(int argc, char** argv){
 
@@ -86,9 +100,9 @@ int main(int argc, char** argv){
     src_mac\t \
     dst_mac\t \
     type\t \
-    protocol\t \
     src_ip\t \
     dst_ip\t \
+    protocol\t \
     src_port\t \
     dst_port\n");
 
@@ -113,40 +127,38 @@ int main(int argc, char** argv){
         );
         if(ntohs(ethernet->eth_type)==0x0800){
             ip=(ip_hdr*)(packet+eth_len);
-            if(ip->protocol==0){
-                printf("IPv4\t \
-                %d.%d.%d.%d\t \
-                %d.%d.%d.%d\t \
-                -\t-\t" \
+            printf(" %d.%d.%d.%d\t \
+                %d.%d.%d.%d\t" \
                 ,ip->sourceIP[0],ip->sourceIP[1],ip->sourceIP[2],ip->sourceIP[3] \
                 ,ip->destIP[0],ip->destIP[1],ip->destIP[2],ip->destIP[3] \
-                );
-            }
-            else if(ip->protocol==6){
+            );
+
+            if(ip->protocol==6){
                 tcp=(tcp_hdr*)(packet+eth_len+ip_len);
                 printf("TCP\t \
-                %d.%d.%d.%d\t \
-                %d.%d.%d.%d\t \
                 %u\t%u\t" \
-                ,ip->sourceIP[0],ip->sourceIP[1],ip->sourceIP[2],ip->sourceIP[3] \
-                ,ip->destIP[0],ip->destIP[1],ip->destIP[2],ip->destIP[3] \
-                ,tcp->sport,tcp->dport \
+                ,ntohs(tcp->sport),ntohs(tcp->dport) \
                 );
             }
             else if(ip->protocol==17){
                 udp=(udp_hdr*)(packet+eth_len+ip_len);
                 printf("UDP\t \
-                %d.%d.%d.%d\t \
-                %d.%d.%d.%d\t \
                 %u\t%u\t" \
-                ,ip->sourceIP[0],ip->sourceIP[1],ip->sourceIP[2],ip->sourceIP[3] \
-                ,ip->destIP[0],ip->destIP[1],ip->destIP[2],ip->destIP[3] \
-                ,udp->sport,udp->dport \
+                ,ntohs(udp->sport),ntohs(udp->dport) \
                 );
             }
-            else{
-                printf("未知的：%d",ip->protocol);
+            else if(ip->protocol==89){
+                printf("OSPF\t-\t-\t");
             }
+        }
+        else if(ntohs(ethernet->eth_type)==0x0806){
+            arp=(arp_hdr*)(packet+eth_len);
+            printf(" %d.%d.%d.%d\t \
+                %d.%d.%d.%d\t \
+                -\t-\t" \
+                ,arp->sourceIP[0],arp->sourceIP[1],arp->sourceIP[2],arp->sourceIP[3] \
+                ,arp->destIP[0],arp->destIP[1],arp->destIP[2],arp->destIP[3] \
+            );
         }
         else{
             printf("IP之外：%d",ntohs(ethernet->eth_type));
